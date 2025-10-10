@@ -205,6 +205,7 @@ public class WeightDailyStatisticService extends GenericCrudService<WeightDailyS
 
     /**
      * Busca estatísticas de peso de um usuário na semana atual
+     *
      * @param userId ID do usuário
      * @return Lista de estatísticas de peso da semana atual
      */
@@ -218,6 +219,7 @@ public class WeightDailyStatisticService extends GenericCrudService<WeightDailyS
 
     /**
      * Busca estatísticas semanais de peso para um usuário em um período específico
+     * Retorna todas as semanas do período, mesmo aquelas sem registros (com peso 0)
      *
      * @param userId    ID do usuário
      * @param startDate Data inicial do período
@@ -231,39 +233,53 @@ public class WeightDailyStatisticService extends GenericCrudService<WeightDailyS
 
             Map<String, List<BigDecimal>> weeklyWeights = new LinkedHashMap<>();
 
-            LocalDate currentDate = startDate;
-            while (!currentDate.isAfter(endDate)) {
-                LocalDate weekStart = currentDate.minusDays(currentDate.getDayOfWeek().getValue() - 1);
-                String weekKey = weekStart.toString();
-                weeklyWeights.putIfAbsent(weekKey, new java.util.ArrayList<>());
+            LocalDate weekStart = startDate.minusDays(startDate.getDayOfWeek().getValue() - 1);
+            LocalDate weekEnd = endDate.minusDays(endDate.getDayOfWeek().getValue() - 1).plusDays(6);
 
-                LocalDate finalCurrentDate = currentDate;
-                statistics.stream()
-                        .filter(stat -> stat.getDate().equals(finalCurrentDate))
-                        .forEach(stat -> weeklyWeights.get(weekKey).add(stat.getWeightKg()));
+            LocalDate currentWeekStart = weekStart;
+            while (!currentWeekStart.isAfter(weekEnd)) {
+                weeklyWeights.put(currentWeekStart.toString(), new java.util.ArrayList<>());
+                currentWeekStart = currentWeekStart.plusDays(7);
+            }
 
-                currentDate = currentDate.plusDays(1);
+            for (WeightDailyStatistic stat : statistics) {
+                LocalDate statWeekStart = stat.getDate().minusDays(stat.getDate().getDayOfWeek().getValue() - 1);
+                String weekKey = statWeekStart.toString();
+
+                if (weeklyWeights.containsKey(weekKey)) {
+                    weeklyWeights.get(weekKey).add(stat.getWeightKg());
+                }
             }
 
             return weeklyWeights.entrySet().stream()
-                    .filter(entry -> !entry.getValue().isEmpty())
                     .map(entry -> {
                         List<BigDecimal> weights = entry.getValue();
-                        LocalDate weekStart = LocalDate.parse(entry.getKey());
+                        LocalDate weekStartDate = LocalDate.parse(entry.getKey());
 
-                        BigDecimal sum = weights.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
-                        BigDecimal average = sum.divide(BigDecimal.valueOf(weights.size()), 2, RoundingMode.HALF_UP);
-                        BigDecimal min = weights.stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
-                        BigDecimal max = weights.stream().max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+                        if (weights.isEmpty()) {
+                            return new WeeklyWeightDTO(
+                                    weekStartDate,
+                                    weekStartDate.plusDays(6),
+                                    BigDecimal.ZERO,
+                                    BigDecimal.ZERO,
+                                    BigDecimal.ZERO,
+                                    0
+                            );
+                        } else {
+                            BigDecimal sum = weights.stream().reduce(BigDecimal.ZERO, BigDecimal::add);
+                            BigDecimal average = sum.divide(BigDecimal.valueOf(weights.size()), 2, RoundingMode.HALF_UP);
+                            BigDecimal min = weights.stream().min(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
+                            BigDecimal max = weights.stream().max(BigDecimal::compareTo).orElse(BigDecimal.ZERO);
 
-                        return new WeeklyWeightDTO(
-                                weekStart,
-                                weekStart.plusDays(6),
-                                average,
-                                min,
-                                max,
-                                weights.size()
-                        );
+                            return new WeeklyWeightDTO(
+                                    weekStartDate,
+                                    weekStartDate.plusDays(6),
+                                    average,
+                                    min,
+                                    max,
+                                    weights.size()
+                            );
+                        }
                     })
                     .collect(Collectors.toList());
 

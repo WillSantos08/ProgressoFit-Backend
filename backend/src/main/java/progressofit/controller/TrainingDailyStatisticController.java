@@ -32,21 +32,6 @@ public class TrainingDailyStatisticController {
         return ResponseEntity.ok(statistics);
     }
 
-    @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<TrainingDailyStatistic>> getStatisticsAllUsers() {
-        List<TrainingDailyStatistic> statistics = service.findAll();
-        return ResponseEntity.ok(statistics);
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<TrainingDailyStatistic> getStatisticById(@PathVariable Long id) {
-        Optional<TrainingDailyStatistic> statistic = service.findById(id);
-        return statistic.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
     @GetMapping("/period")
     public ResponseEntity<List<TrainingDailyStatistic>> getStatisticsByPeriod(
             @RequestParam LocalDate startDate,
@@ -166,13 +151,6 @@ public class TrainingDailyStatisticController {
         }
     }
 
-    @DeleteMapping("/user/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteAllStatisticsByUser(@PathVariable Long userId) {
-        service.deleteByUserId(userId);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping("/weekly/period")
     public ResponseEntity<List<WeeklyTrainingCountDTO>> getWeeklyTrainingCounts(
             @RequestParam LocalDate startDate,
@@ -195,5 +173,27 @@ public class TrainingDailyStatisticController {
         Long userId = authUtil.getCurrentUserId();
         List<WeeklyTrainingCountDTO> weeklyCounts = service.findWeeklyTrainingCountsCurrentYear(userId);
         return ResponseEntity.ok(weeklyCounts);
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<TrainingDailyStatistic>> getStatisticsAllUsers() {
+        List<TrainingDailyStatistic> statistics = service.findAll();
+        return ResponseEntity.ok(statistics);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<TrainingDailyStatistic> getStatisticById(@PathVariable Long id) {
+        Optional<TrainingDailyStatistic> statistic = service.findById(id);
+        return statistic.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/user/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteAllStatisticsByUser(@PathVariable Long userId) {
+        service.deleteByUserId(userId);
+        return ResponseEntity.noContent().build();
     }
 }
